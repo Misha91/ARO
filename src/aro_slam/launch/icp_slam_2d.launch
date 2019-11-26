@@ -1,0 +1,38 @@
+<launch>
+    <arg name="with_odom" default="true"/>
+
+    <node name="scan_to_point_cloud" pkg="nodelet" type="nodelet"
+          args="standalone point_cloud_color/scan_to_point_cloud"
+          output="screen">
+        <param if="$(arg with_odom)" name="fixed_frame" value="odom"/>
+        <param unless="$(arg with_odom)" name="fixed_frame" value="base_link"/>
+        <param name="tf_timeout" value="1.0"/>
+        <param name="channel_options" value="3"/>
+        <param name="scan_queue_size" value="2"/>
+        <param name="cloud_queue_size" value="2"/>
+        <remap from="scan" to="scan"/>
+        <remap from="cloud" to="cloud"/>
+    </node>
+
+    <node name="icp_slam_2d" pkg="aro_slam" type="icp_slam_2d" output="screen">
+        <param if="$(arg with_odom)" name="tracked_frame" value="odom"/>
+        <param if="$(arg with_odom)" name="map_frame" value="map"/>
+        <param unless="$(arg with_odom)" name="tracked_frame" value="base_link"/>
+        <param unless="$(arg with_odom)" name="map_frame" value="map"/>
+        <param name="sensor_frame" value="laser"/>
+        <param name="map_update_interval" value="0.5"/>
+        <param name="num_iters" value="100"/>
+        <param name="inlier_ratio" value="0.75"/>
+        <param name="inlier_dist_mult" value="2.00"/>
+        <param name="grid_res" value="0.05"/>
+        <param name="filter_res" value="0.1"/>
+
+        <remap from="scan" to="not_used"/>
+        <remap from="cloud" to="cloud"/>
+
+        <remap from="filtered_cloud" to="filtered_cloud"/>
+        <remap from="registered_cloud" to="registered_cloud"/>
+        <remap from="point_map" to="point_map"/>
+        <remap from="occupancy" to="occupancy"/>
+    </node>
+</launch>

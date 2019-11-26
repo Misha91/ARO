@@ -1,0 +1,3 @@
+geometry_msgs/Pose2D goal
+---
+geometry_msgs/Pose2D[] path

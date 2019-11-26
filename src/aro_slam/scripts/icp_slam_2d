@@ -1,0 +1,133 @@
+#!/usr/bin/env python
+"""
+Simultaneous localization and mapping (SLAM) based on iterative closest point
+(ICP). The node operates in 2D. Z coordinate is discarding when processing
+point clouds.
+In brief, the node receives point clouds which it registers with incrementally
+built map to estimate transformation between odom and map frame.
+"""
+from __future__ import absolute_import, division, print_function
+from aro_slam.icp import icp
+from aro_slam.utils import array, cloud_msg, col, filter_grid, OccupancyMap, PointMap, points_from_msg, transform_msg
+from laser_geometry.laser_geometry import LaserProjection
+from nav_msgs.msg import OccupancyGrid
+import numpy as np
+import rospy
+from sensor_msgs.msg import LaserScan, PointCloud2
+from timeit import default_timer as timer
+import tf2_ros
+# Needed for tf2_ros.Buffer.transform(cloud)
+from tf2_sensor_msgs.tf2_sensor_msgs import do_transform_cloud
+
+
+class IcpSlam2dNode(object):
+    def __init__(self):
+
+        rospy.init_node('aro_slam')
+        # Sensor frame is needed to recover sensor origin for updating
+        # occupancy grid (point cloud need not be in the sensor frame).
+        self.sensor_frame = rospy.get_param('~sensor_frame', 'laser')
+        rospy.loginfo("Sensor frame: %s", self.sensor_frame)
+
+        # Which frame to track and align.
+        self.tracked_frame = rospy.get_param('~tracked_frame', 'odom')
+        rospy.loginfo("Tracked frame: %s", self.tracked_frame)
+
+        # Fixed map frame, parent of the tracked frame.
+        self.map_frame = rospy.get_param('~map_frame', 'map')
+        rospy.loginfo("Map frame: %s", self.map_frame)
+
+        # Wait between map updates to reduce computation.
+        self.map_update_interval = rospy.get_param('~map_update_interval', 5.0)
+        rospy.loginfo("Update map interval: %.3f s", self.map_update_interval)
+
+        # Number of ICP iterations.
+        self.num_iters = rospy.get_param('~num_iters', 100)
+        rospy.loginfo("Number of ICP iterations: %i", self.num_iters)
+
+        # Min. cloud overlap, nearest points from which to compute inlier distance.
+        self.inlier_ratio = rospy.get_param('~inlier_ratio', 0.5)
+        rospy.loginfo("Inlier distance quantile: %.3f", self.inlier_ratio)
+
+        # Inlier distance multiplier deciding what gets optimized.
+        self.inlier_dist_mult = rospy.get_param('~inlier_dist_mult', 1.)
+        rospy.loginfo("Inlier distance multiplier: %.3f", self.inlier_dist_mult)
+
+        # Filtering and occupancy grid resolution (cell edge length).
+        self.grid_res = rospy.get_param('~grid_res', 0.1)
+        rospy.loginfo("Occupancy grid resolution: %.3f m", self.grid_res)
+
+        self.filter_res = rospy.get_param('~filter_res', 0.1)
+        rospy.loginfo("Point filter resolution: %.3f m", self.filter_res)
+
+        self.map = PointMap(self.filter_res)
+        self.occ = OccupancyMap(self.map_frame, self.grid_res)
+        self.last_update_stamp = None
+        #rospy.sleep(3)
+        self.tf = tf2_ros.Buffer()
+        self.tf_sub = tf2_ros.TransformListener(self.tf)
+        self.tf_pub = tf2_ros.TransformBroadcaster()
+
+        self.R = None
+        self.t = None
+
+        self.filtered_points_pub = rospy.Publisher('filtered_cloud', PointCloud2, queue_size=2)
+        self.registered_points_pub = rospy.Publisher('registered_cloud', PointCloud2, queue_size=2)
+        self.map_pub = rospy.Publisher('point_map', PointCloud2, queue_size=2)
+        self.occ_pub = rospy.Publisher('occupancy', OccupancyGrid, queue_size=2)
+
+        self.laser_proj = LaserProjection()
+        self.scan_sub = rospy.Subscriber('scan', LaserScan, self.scan_cb, queue_size=2)
+        self.points_sub = rospy.Subscriber('cloud', PointCloud2, self.points_cb, queue_size=2)
+
+    def last_update_too_old(self, stamp):
+        return stamp - self.last_update_stamp >= rospy.Duration(self.map_update_interval)
+
+    def points_cb(self, msg):
+        t0 = timer()
+        stamp = msg.header.stamp
+        msg = self.tf.transform(msg, self.tracked_frame)
+        x = points_from_msg(msg)
+        x_filt = filter_grid(x, self.filter_res)
+        self.filtered_points_pub.publish(cloud_msg(x, stamp, self.tracked_frame))
+        # Align query points with the point map.
+        if self.map.empty():
+            self.R, self.t = np.eye(3), np.zeros((3, 1))
+        else:
+            self.R[:2, :2], self.t[:2, :], err_inl \
+                = icp(x_filt, self.map.points, self.num_iters, self.inlier_ratio, self.inlier_dist_mult,
+                      y_index=self.map.index, R=self.R[:2, :2], t=self.t[:2, :])
+            if err_inl > 0.1:
+                rospy.logwarn('Mean inlier error: %.3f m.' % err_inl)
+            x = np.matmul(self.R[:2, :2], x) + self.t[:2, :]
+        tf_msg = transform_msg(self.R, self.t, stamp, self.map_frame, self.tracked_frame)
+        self.tf_pub.sendTransform(tf_msg)
+        self.tf.set_transform(tf_msg, 'icp_slam')
+        self.registered_points_pub.publish(cloud_msg(x, stamp, self.map_frame))
+
+        if self.map.empty() or self.last_update_too_old(stamp):
+            self.map.update(x)
+            self.last_update_stamp = stamp
+            rospy.logdebug('Map updated at %.3f.' % stamp.to_sec())
+            # Update occupancy map.
+            sensor_to_map = self.tf.lookup_transform(self.map_frame, self.sensor_frame, stamp)
+            origin = col(array(sensor_to_map.transform.translation))
+            self.occ.update(origin, x, stamp)
+            # Remove points in free space from point map.
+            self.map.points = self.map.points[:, self.occ.occupied(self.map.points)]
+            self.map.update_index()
+            # Publish maps.
+            self.map_pub.publish(cloud_msg(self.map.points, stamp, self.map_frame))
+            self.occ_pub.publish(self.occ.to_msg())
+
+        rospy.loginfo_throttle(5, 'Points callback runtime: %.3g s.' % (timer() - t0))
+
+    def scan_cb(self, scan):
+        rospy.logwarn_once('High fidelity projection is not available for laser scans.')
+        points = self.laser_proj.projectLaser(scan)
+        self.points_cb(points)
+
+
+if __name__ == '__main__':
+    node = IcpSlam2dNode()
+    rospy.spin()

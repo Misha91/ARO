@@ -1,0 +1,1 @@
+<node name="rviz" pkg="rviz" type="rviz" output="screen" args="-d $(find dummy_grid)/config/grid.rviz" />

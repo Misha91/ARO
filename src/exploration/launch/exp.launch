@@ -1,0 +1,7 @@
+<launch>
+    <!-- Feel free to add some command line arguments and parameters -->
+    <include file="$(find robot_coordination)/launch/rc.launch"/>
+    <node name="planner" pkg="exploration" type="planner.py"  />
+    <node name="frontier_explorer" pkg="exploration" type="frontier.py" output="screen" />
+    <node name="routine" pkg="exploration" type="routine.py" output="screen" />
+</launch>

@@ -1,0 +1,20 @@
+<launch>
+    <arg name="ox" default="0.0" />
+    <arg name="oy" default="0.0" />
+    <arg name="theta" default="0.0" />
+    <arg name="rx" default="0.0" />
+    <arg name="ry" default="0.0" />
+    <arg name="vis" default="rviz" />
+
+    <param name="/grid_publisher/x" value="$(arg ox)" />
+    <param name="/grid_publisher/y" value="$(arg oy)" />
+    <param name="/grid_publisher/theta" value="$(arg theta)" />
+
+    <param name="/pose_sender/x" value="$(arg rx)" />
+    <param name="/pose_sender/y" value="$(arg ry)" />
+
+    <node name="grid_publisher" pkg="dummy_grid" type="grid_publisher.py" output="screen" />
+    <node name="pose_sender" pkg="dummy_grid" type="pose_sender.py" output="screen" />
+    <node name="grid_visualizer" pkg="dummy_grid" type="grid_visualizer.py" output="screen" if="$(eval vis != 'rviz')" />
+    <node name="rviz" pkg="rviz" type="rviz" output="screen" args="-d $(find dummy_grid)/config/grid.rviz" if="$(eval vis == 'rviz')" />
+</launch>

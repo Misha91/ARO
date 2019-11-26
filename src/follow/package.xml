@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+<package>
+  <name>follow</name>
+  <version>0.0.0</version>
+  <description>The follow package</description>
+
+
+  <maintainer email="robotnuc2@todo.todo">robotnuc2</maintainer>
+
+  <license>BSD</license>
+
+
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <build_depend>geometry_msgs</build_depend>
+  <build_depend>roscpp</build_depend>
+  <build_depend>sensor_msgs</build_depend>
+  <build_depend>std_msgs</build_depend>
+  <build_depend>rospy</build_depend>
+  <build_depend>message_generation</build_depend>
+  <run_depend>geometry_msgs</run_depend>
+  <run_depend>roscpp</run_depend>
+  <run_depend>sensor_msgs</run_depend>
+  <run_depend>std_msgs</run_depend>
+  <run_depend>rospy</run_depend>
+
+  <!-- The export tag contains other, unspecified, tags -->
+  <export>
+    <rocon_app>rapps/follow/follow.rapp</rocon_app>
+
+  </export>
+</package>

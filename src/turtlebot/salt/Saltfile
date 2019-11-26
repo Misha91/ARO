@@ -1,0 +1,3 @@
+salt-call:
+	local: True
+	config_dir: ./salt_config

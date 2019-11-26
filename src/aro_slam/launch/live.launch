@@ -1,0 +1,14 @@
+<launch>
+    <env name="ROSCONSOLE_FORMAT" value="[${severity}] [${walltime}] [${node}] ${message}"/>
+    <env name="ROSCONSOLE_STDOUT_LINE_BUFFERED" value="1"/>
+    <arg name="rviz" default="false"/>
+
+    <include if="$(arg rviz)" file="$(find aro_slam)/launch/viz.launch"/>
+
+    <include file="$(find aro_slam)/launch/icp_slam_2d.launch">
+        <arg name="with_odom" value="true"/>
+    </include>
+
+    <include file="$(find exploration)/launch/exp.launch"/>
+    <!-- <include file="$(find exploration)/launch/exp.launch"/> -->
+</launch>

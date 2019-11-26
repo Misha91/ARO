@@ -1,0 +1,4 @@
+<launch>
+    <node name="grid_visualizer" pkg="dummy_grid" type="grid_visualizer.py" output="screen"  />
+    <include file="$(find aro_slam)/launch/viz.launch"/>    
+</launch>

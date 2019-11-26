@@ -1,0 +1,5 @@
+<launch>
+    <node name="detector" pkg="barbie_detection" type="detector.py" output="screen"> 
+	<param name="weights_path" value="$(find barbie_detection)/scripts/trained_weights"/> 
+    </node>
+</launch>

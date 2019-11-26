@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<package format="2">
+    <name>voxel_map</name>
+    <version>0.0.1</version>
+    <description>Simple C++ header-only library with Matlab and Python interfaces for dealing with voxel maps.</description>
+    <maintainer email="tpetricek@gmail.com">Tomas Petricek</maintainer>
+    <license>MIT</license>
+
+    <url>https://bitbucket.org/tpetricek/voxel_map</url>
+    <author>Tomas Petricek</author>
+    
+    <buildtool_depend>cmake</buildtool_depend>
+
+    <build_depend>boost</build_depend>
+    <exec_depend>boost</exec_depend>
+    <exec_depend>catkin</exec_depend>
+
+    <export>
+        <build_type>cmake</build_type>
+    </export>
+</package>

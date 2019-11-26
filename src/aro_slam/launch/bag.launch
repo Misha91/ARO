@@ -1,0 +1,26 @@
+<launch>
+    <env name="ROSCONSOLE_FORMAT" value="[${severity}] [${walltime}] [${node}] ${message}"/>
+    <env name="ROSCONSOLE_STDOUT_LINE_BUFFERED" value="1"/>
+
+    <arg name="bag" default="$(find aro_slam)/data/2018-12-10-15-21-04_filtered.bag"/>
+    <arg name="with_odom" default="true"/>
+
+    <param name="use_sim_time" value="true"/>
+    <include file="$(find aro_slam)/launch/viz.launch"/>
+
+    <include file="$(find aro_slam)/launch/icp_slam_2d.launch">
+        <arg name="with_odom" value="$(arg with_odom)"/>
+    </include>
+
+    <node name="rosbag_play" pkg="rosbag" type="play"
+          args="--clock -s 0.0 -r 1.0 -k $(arg bag)">
+        <remap unless="$(arg with_odom)" from="tf" to="tf_old"/>
+    </node>
+
+    <node unless="$(arg with_odom)" name="tf_remap" pkg="topic_tools" type="transform"
+          args="/tf_old /tf tf2_msgs/TFMessage
+                'm if m.transforms[0].child_frame_id != &quot;base_link&quot; else None'
+                --wait-for-start"
+          output="screen">
+    </node>
+</launch>

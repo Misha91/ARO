@@ -1,0 +1,6 @@
+<launch>
+    <!-- Feel free to add some command line arguments and parameters -->
+    
+    
+    <node name="robot_node" pkg="robot_coordination" type="robot_node" />
+</launch>

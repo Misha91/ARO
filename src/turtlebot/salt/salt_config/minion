@@ -1,0 +1,9 @@
+root_dir: ./
+pki_dir: ./salt_config/pki/master
+cachedir: ./salt_config/cache/master
+log_file: ./salt_config/log/master
+ssh_log_file: ./salt_config/log/ssh
+file_roots:
+  base:
+    - ./salt
+

@@ -1,0 +1,28 @@
+#!/bin/bash
+
+script_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+cd ${script_dir}/..
+ret=0
+
+for py in 2.7 3.5
+do
+    venv=`mktemp -d`
+    echo -n "Testing distutils installation with python${py} in virtualenv ${venv}..."
+    log=${venv}/setup.py.log
+    # && vex --path ${venv} env | grep -e PATH -e LD >> ${log} \
+    virtualenv -p python${py} ${venv} >> ${log} 2>&1 \
+        && vex --path ${venv} python setup.py build >> ${log} 2>&1 \
+        && vex --path ${venv} python setup.py install >> ${log} 2>&1 \
+        && vex --path ${venv} python python/test/test_voxel_map.py >> ${log} 2>&1
+    if [ $? == "0" ]
+    then
+        echo " OK."
+        # rm -r ${venv}
+    else
+        echo " FAILED."
+        echo "See details: cat ${venv}/setup.py.log"
+        ret=1
+    fi
+done
+
+exit "${ret}"
